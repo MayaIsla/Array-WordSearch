@@ -1,0 +1,378 @@
+/*
+* Vector.cpp
+*
+*
+<Need to test for bad data when reading in file>
+*
+*
+*/
+
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <cstring>
+#include <algorithm>
+#include <cctype>
+
+using namespace std;
+
+enum direction
+{
+   LEFT_RIGHT,
+   RIGHT_LEFT,
+   DOWN,
+   UP,
+   RIGHT_DOWN,
+   RIGHT_UP,
+   LEFT_DOWN,
+   LEFT_UP
+};
+const int DIRECTIONS = 8;
+
+const int dir[DIRECTIONS][2] =
+   {
+       {1, 0},
+       {-1, 0},
+       {0, 1},
+       {0, -1},
+       {1, 1},
+       {1, -1},
+       {-1, 1},
+       {-1, -1}};
+
+const int MAX = 50;
+
+struct wordGame
+{
+   int version, numberRows, numberColumns;
+   char puzzle[MAX][MAX];
+};
+
+struct wordFind
+{
+   string word;
+   bool found;
+   int row;
+   int column;
+   direction where;
+};
+
+int length;
+// find the word that is part of the wordFind structure inside the wordGame structure.
+// If the word is found the wordFind structure will be updated.
+void findWord(wordGame &game, wordFind &theFind);
+// read the puzzle from the input file and update the wordGame structure.
+bool readPuzzle(wordGame &game, string inputFileName);
+// display the contents of the puzzle
+void displayPuzzle(wordGame &game);
+
+bool checkDir(wordGame &game, wordFind &theFind, int i);
+bool isInWord(char c, string word);
+bool loopHelper(wordGame &game, wordFind &theFind, int i, int row, int col);
+string toString(direction d);
+
+int main()
+{
+   wordGame game;
+   wordFind find;
+   find.where = LEFT_RIGHT;
+   string puzzle;
+   cin >> puzzle;
+
+   if (!readPuzzle(game, puzzle))
+   {
+       cout << "The puzzle file \"" << puzzle << "\" could not be opened or is invalid" << endl;
+       return 0;
+   }
+   else
+   {
+       cout << "The puzzle from file \"" << puzzle << "\"" << endl;
+   }
+   displayPuzzle(game);
+
+   string words;
+   cin >> words;
+   ifstream ifs(words.c_str());
+   if (!ifs)
+   {
+       cout << "The puzzle file \"" << words << "\" could not be opened or is invalid" << endl;
+       return 0;
+   }
+   string last = "";
+   bool done = false;
+   while (ifs && !done)
+   {
+       ifs >> find.word;
+       length = static_cast<int>(find.word.length());
+       if (find.word == last)
+           done = true;
+       else
+       {
+           find.found = false;
+           findWord(game, find);
+           if (find.found)
+           {
+               cout << "The word " << find.word << " was found at ("
+                    << find.row << ", " << find.column << ") - " << toString(find.where) << endl;
+           }
+           else
+           {
+               cout << "The word " << find.word << " was not found" << endl;
+           }
+       }
+       last = find.word;
+   }
+   ifs.close();
+   return 0;
+}
+
+bool readPuzzle(wordGame &game, string inputFileName)
+{
+   ifstream ifs(inputFileName.c_str());
+   if (!ifs)
+   {
+       return false;
+   }
+   int r, c;
+   ifs >> r >> c;
+
+   if (r > MAX || c > MAX || r < 1 || c < 1)
+   {
+       return false;
+   }
+   else
+   {
+       game.numberRows = r;
+       game.numberColumns = c;
+       for (int row = 0; row < r; row++)
+       {
+           for (int col = 0; col < c; col++)
+           {
+               ifs >> game.puzzle[row][col];
+           }
+       }
+   }
+
+   ifs.close();
+   return true;
+}
+
+void displayPuzzle(wordGame &game)
+{
+   for (int r = 0; r < game.numberRows; r++)
+   {
+       for (int c = 0; c < game.numberColumns; c++)
+       {
+           cout << game.puzzle[r][c];
+       }
+       cout << endl;
+   }
+}
+
+void findWord(wordGame &game, wordFind &theFind)
+{
+   int i = 0;
+   bool done = false;
+   while (!done)
+   {
+       direction d = static_cast<direction>(i);
+       //cout << endl
+       //<< toString(d) << endl;
+       if (checkDir(game, theFind, i))
+       {
+           theFind.where = d;
+           done = true;
+           theFind.found = true;
+       }
+       if ((i >= DIRECTIONS))
+           done = true;
+       i++;
+   }
+   //cout << endl
+   //<< endl
+   //<< endl;
+}
+
+bool checkDir(wordGame &game, wordFind &theFind, int i)
+{
+   //cout << endl;
+   string word = theFind.word;
+   //cout << "(" << lr << ", " << ud << ")" << endl;
+   for (int r = 0; r < game.numberRows; r++)
+   {
+       //cout << endl;
+       int row = r;
+       int col = 0;
+       bool ret = loopHelper(game, theFind, i, row, col);
+       if (ret)
+           return true;
+       for (int c = 0; c < game.numberColumns; c++)
+       {
+           //cout << endl;
+           int row = r;
+           int col = c;
+           bool ret = loopHelper(game, theFind, i, row, col);
+           if (ret)
+               return true;
+       }
+   }
+   //cout << endl;
+
+   return false;
+}
+
+bool isInWord(char c, string word)
+{
+   bool ret = false;
+   for (int i = 0; i < static_cast<int>(word.length()); i++)
+   {
+       if (c == word.at(i) && !ret)
+       {
+           //cout << c;
+           ret = true;
+       }
+   }
+   return ret;
+}
+
+string toString(direction d)
+{
+   switch (d)
+   {
+   case LEFT_RIGHT:
+       return "right";
+       break;
+   case (RIGHT_LEFT):
+       return "left";
+       break;
+   case (LEFT_DOWN):
+       return "left/down";
+       break;
+   case (LEFT_UP):
+       return "left/up";
+       break;
+   case (RIGHT_DOWN):
+       return "right/down";
+       break;
+   case (RIGHT_UP):
+       return "right/up";
+       break;
+   case (UP):
+       return "up";
+       break;
+   case (DOWN):
+       return "down";
+       break;
+   default:
+       return "";
+       break;
+   }
+}
+
+bool loopHelper(wordGame &game, wordFind &theFind, int i, int row, int col)
+{
+   int lr = dir[i][0];
+   int ud = dir[i][1];
+   string word = theFind.word;
+
+   int frow = row;
+   int fcol = col;
+   string tempA;
+
+   for (int i = 0; i < length; i++)
+   {
+       tempA += '-';
+   }
+
+   char expected = '-';
+   int counter = 0;
+   while (row >= 0 && row < game.numberRows && col >= 0 && col < game.numberColumns)
+   {
+       char cur = game.puzzle[row][col];
+       bool curr = isInWord(cur, word);
+       if (curr)
+       {
+           if (counter <= 0)
+           {
+               counter = 0;
+               if (word.at(counter) == cur)
+               {
+                   tempA[counter] = cur;
+                   expected = word.at(counter + 1);
+                   frow = row;
+                   fcol = col;
+               }
+           }
+           else
+           {
+               if (counter < static_cast<int>(word.length()) - 1)
+               {
+                   if (cur == expected)
+                   {
+                       tempA[counter] = cur;
+                       expected = word.at(counter + 1);
+                   }
+                   else
+                   {
+
+                       counter = -1;
+                       expected = '-';
+                       if (word.at(0) == cur)
+                       {
+                           tempA[0] = cur;
+                           counter = 0;
+                           expected = word.at(1);
+                           frow = row;
+                           fcol = col;
+                       }
+                   }
+               }
+               else
+               {
+                   if (cur == expected && counter == static_cast<int>(word.length()) - 1)
+                   {
+                       tempA[counter] = cur;
+                   }
+                   else
+                   {
+                       counter = -1;
+                       expected = '-';
+                       if (word.at(0) == cur)
+                       {
+                           tempA[0] = cur;
+                           counter = 0;
+                           expected = word.at(1);
+                           frow = row;
+                           fcol = col;
+                       }
+                   }
+               }
+           }
+           if (counter >= static_cast<int>(theFind.word.length()) - 1 || ((string)tempA == word))
+           {
+               //cout << "row: " << frow << " col: " << fcol << endl;
+               //cout << (string)tempA << endl;
+               theFind.column = fcol + 1;
+               theFind.row = frow + 1;
+               return true;
+           }
+           counter++;
+           //cout << endl << "cur :" << cur << " expected: " << expected <<
+           //"+"<< " counter: "<< counter << " " << word << endl;
+       }
+       else
+       {
+           counter = 0;
+           //cout << "-";
+       }
+       row += ud;
+       col += lr;
+   }
+   return false;
+}
+
+
+
+
+
+
